@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>沙漠驿站资料馆</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🐫 沙漠驿站资料馆 <small>水井 · 商队 · 民居 · 工艺</small></div>
+  <nav class="tabs">
+    <button data-tab="browse" class="tab active">浏览</button>
+    <button data-tab="graph" class="tab">关系图</button>
+    <button data-tab="travel" class="tab">旅行资料检查</button>
+    <button data-tab="admin" class="tab">编辑台（内部）</button>
+  </nav>
+  <label class="lowbw"><input type="checkbox" id="lowbw"> 低带宽模式</label>
+</header>
+
+<main>
+  <!-- ===================== BROWSE ===================== -->
+  <section id="tab-browse" class="tabpane active">
+    <div class="filters">
+      <button data-type="all" class="fbtn active">全部</button>
+      <button data-type="well" class="fbtn">水井</button>
+      <button data-type="caravan" class="fbtn">商队</button>
+      <button data-type="dwelling" class="fbtn">民居</button>
+      <button data-type="craft" class="fbtn">工艺</button>
+      <span class="hint" id="pubtime"></span>
+    </div>
+    <div id="browseGrid" class="grid"></div>
+    <article id="articleView" class="card hidden"></article>
+  </section>
+
+  <!-- ===================== GRAPH ===================== -->
+  <section id="tab-graph" class="tabpane">
+    <p class="banner">仅绘制<b>已批准</b>的连接。未确定坐标的实体列入下方“未定位”清单，不补成精确图钉。</p>
+    <div class="graphwrap">
+      <svg id="mapSvg" viewBox="0 0 800 460" role="img" aria-label="已批准关系图"></svg>
+      <ul id="unlocated" class="unlocated"></ul>
+    </div>
+  </section>
+
+  <!-- ===================== TRAVEL ===================== -->
+  <section id="tab-travel" class="tabpane">
+    <p class="banner">请选择一条<b>已审核</b>行程与日期（须在行程有效窗口内）。系统只汇总服务端实际发布记录并指出缺口，<b>不会以算法保证可通行</b>。</p>
+    <div class="row">
+      <select id="itinSelect"></select>
+      <input type="date" id="travelDate">
+      <button id="runCheck" class="primary">执行检查</button>
+    </div>
+    <div id="checkResult"></div>
+  </section>
+
+  <!-- ===================== ADMIN ===================== -->
+  <section id="tab-admin" class="tabpane">
+    <div class="admincols">
+      <div class="admincol">
+        <h3>① 新增来源</h3>
+        <form id="f-source">
+          <select name="kind"><option value="historical">历史证据</option>
+            <option value="oral">口述（推测）</option><option value="contemporary">当代提示</option></select>
+          <input name="title" placeholder="标题" required>
+          <input name="citation" placeholder="引注（卷/期/编号）">
+          <input name="authored_at" type="date">
+          <button class="primary">保存来源</button>
+        </form>
+
+        <h3>② 新增实体</h3>
+        <form id="f-entity">
+          <select name="etype"><option value="well">水井</option>
+            <option value="caravan">商队</option><option value="dwelling">民居</option>
+            <option value="craft">工艺</option></select>
+          <input name="name" placeholder="名称" required>
+          <input name="era" placeholder="年代，如 清末 / 当代">
+          <textarea name="summary" placeholder="摘要（同名实体请在此注明独立性）"></textarea>
+          <button class="primary">保存实体</button>
+        </form>
+        <p class="warn">⚠ 历史地理实体与当前服务实体必须分别建档；名称相同不会自动产生任何关联。</p>
+
+        <h3>③ 新增陈述（历史证据/口述推测/当代提示）</h3>
+        <form id="f-statement">
+          <select name="entity_id" id="st-entity"></select>
+          <select name="source_id" id="st-source"></select>
+          <input name="predicate" placeholder="属性，如 dug_in / serves_site" required>
+          <input name="value" placeholder="陈述内容">
+          <select name="value_ref" id="st-ref"><option value="">（不指向实体）</option></select>
+          <select name="category"><option value="evidence">证据</option>
+            <option value="speculation">推测</option><option value="tip">提示</option></select>
+          <textarea name="note" placeholder="编按"></textarea>
+          <button class="primary">保存陈述（进入待批）</button>
+        </form>
+
+        <h3>④ 关系与坐标</h3>
+        <form id="f-relation">
+          <select name="from_entity" id="rel-from"></select>
+          <select name="rtype"><option value="uses_well">使用水井</option>
+            <option value="lodges_at">驻留</option><option value="draws_from">取材于</option>
+            <option value="practiced_at">从业于</option><option value="serves">当代供给</option></select>
+          <select name="to_entity" id="rel-to"></select>
+          <select name="statement_id" id="rel-stmt"></select>
+          <button class="primary">建立待批关系</button>
+        </form>
+        <form id="f-location">
+          <select name="entity_id" id="loc-entity"></select>
+          <select name="precision"><option value="exact">精确</option>
+            <option value="approximate">近似</option><option value="unlocated">未定位</option></select>
+          <input name="lat" placeholder="纬度（精确/近似）">
+          <input name="lng" placeholder="经度（精确/近似）">
+          <select name="statement_id" id="loc-stmt"></select>
+          <button class="primary">记录坐标</button>
+        </form>
+
+        <h3>⑤ 运营：补给点 / 行程 / 照片</h3>
+        <form id="f-supply">
+          <select name="entity_id" id="sp-entity"></select>
+          <select name="status"><option value="open">开放</option>
+            <option value="temporarily_closed">临时关闭</option><option value="closed">关闭</option></select>
+          <input name="valid_from" type="date"><input name="valid_to" type="date">
+          <input name="note" placeholder="说明（如关闭原因）">
+          <button class="primary">登记/更新补给点与窗口</button>
+        </form>
+        <form id="f-itin">
+          <input name="name" placeholder="行程名称" required>
+          <input name="valid_from" type="date" required><input name="valid_to" type="date" required>
+          <label><input type="checkbox" name="reviewed"> 已审核</label>
+          <button class="primary">保存行程</button>
+        </form>
+        <form id="f-photo">
+          <select name="entity_id" id="ph-entity"></select>
+          <select name="license"><option value="cc-by">CC-BY</option>
+            <option value="cc-by-sa">CC-BY-SA</option><option value="permission">限期授权</option>
+            <option value="public-domain">公有领域</option><option value="none">无许可</option></select>
+          <input name="license_until" type="date" title="授权截止日（可空）">
+          <input name="caption" placeholder="图说">
+          <button class="primary">登记照片许可</button>
+        </form>
+      </div>
+
+      <div class="admincol wide">
+        <h3>⑥ 待办与审批</h3>
+        <div class="toolbar">
+          <button id="btn-refresh" class="primary">刷新工作台</button>
+          <button id="btn-publish-all">为所有变更排队发布</button>
+          <button id="btn-run-publish">执行发布队列</button>
+          <button id="btn-package">生成离线包（30天）</button>
+          <button id="btn-package-low">生成低带宽离线包</button>
+        </div>
+        <div id="conflicts"></div>
+        <h4>待批陈述</h4>
+        <div id="pendingStatements"></div>
+        <h4>关系（未批准的不会上线）</h4>
+        <div id="allRelations"></div>
+        <h4>发布任务（已取消任务不会再把撤下提示上线）</h4>
+        <div id="taskList"></div>
+        <h4>发布记录 / 离线包</h4>
+        <div id="pubInfo"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/app.js"></script>
+</body>
+</html>
